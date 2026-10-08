@@ -1,0 +1,30 @@
+#Python cache
+_pycache_/
+*.py[cod]
+
+#Virtual environments
+.venv/
+venv/
+env/
+
+#MLflow
+mlruns/
+mlartifacts/
+mlflow.db
+
+#Trained model files
+*.pkl
+*.joblib
+
+#Environment/secrets
+.env
+
+#Jupyter
+.ipynb_checkpoints/
+
+#VS Code
+.vscode/
+
+#OS
+.DS_Store
+Thumbs.db

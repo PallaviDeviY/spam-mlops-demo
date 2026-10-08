@@ -1,0 +1,66 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml
+# MLOps Demo — Run the full stack with one command
+#
+# Services:
+#   spam-api  → our FastAPI spam detection server (port 8000)
+#   mlflow    → experiment tracking UI (port 5000)
+#
+# Usage:
+#   docker compose up          # start all services (shows logs)
+#   docker compose up -d       # start all services in background
+#   docker compose ps          # show running services
+#   docker compose logs -f     # follow logs from all services
+#   docker compose down        # stop and remove all containers
+#   docker compose up --build  # rebuild images then start
+# ──────────────────────────────────────────────────────────────────────────────
+
+version: "3.8"
+
+services:
+
+  # ── Service 1: Spam Detection API ──────────────────────────────────────────
+  spam-api:
+    build: .                          # build image from our Dockerfile
+    container_name: spam-api
+    ports:
+      - "8000:8000"                   # host_port:container_port
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000   # point to mlflow service
+    depends_on:
+      mlflow:
+        condition: service_healthy    # wait for mlflow to be ready
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout:  10s
+      retries:  3
+    restart: unless-stopped
+
+  # ── Service 2: MLflow Tracking Server ──────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest     # official MLflow image
+    container_name: mlflow
+    ports:
+      - "5000:5000"                   # MLflow UI on port 5000
+    command: >
+      mlflow server
+        --host 0.0.0.0
+        --port 5000
+        --backend-store-uri sqlite:///mlflow.db
+        --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow-data:/mlflow            # persist experiment data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout:  10s
+      retries:  5
+      start_period: 20s
+    restart: unless-stopped
+
+# ── Named volumes (data persists even when containers stop) ──────────────────
+volumes:
+  mlflow-data:
+    driver: local
